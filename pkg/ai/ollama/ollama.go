@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/prompt"
 )
 
@@ -19,19 +21,9 @@ type OllamaClient struct {
 func New(httpClient *http.Client) *OllamaClient {
 	return &OllamaClient{
 		httpClient: httpClient,
-		baseURL:    "http://localhost:11434", // TODO: env var
-		model:      "llama3.1",               // TODO: env var
+		baseURL:    env.Get(envURL, defaultURL),
+		model:      env.Get(envModel, defaultModel),
 	}
-}
-
-type Request struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
-}
-
-type Response struct {
-	Response string `json:"response"`
 }
 
 func (c *OllamaClient) Suggest(ctx context.Context, input string) (string, error) {
@@ -60,7 +52,12 @@ func (c *OllamaClient) Suggest(ctx context.Context, input string) (string, error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
+		errorBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read error body: %w", err)
+		}
+
+		return "", fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, errorBody)
 	}
 
 	var response Response

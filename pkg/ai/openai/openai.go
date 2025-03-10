@@ -74,7 +74,11 @@ func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("openai API error (%d): %s", resp.StatusCode, string(body))
+		errorBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read error body: %w", err)
+		}
+		return "", fmt.Errorf("openai API error (%d): %s", resp.StatusCode, errorBody)
 	}
 
 	var response Response
