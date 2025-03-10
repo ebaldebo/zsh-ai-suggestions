@@ -11,9 +11,16 @@ import (
 	"time"
 
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/prompt"
 )
 
-func NewOpenAIClient() *OpenAIClient {
+type OpenAIClient struct {
+	httpClient *http.Client
+	apiKey     string
+	model      string
+}
+
+func New() *OpenAIClient {
 	apiKey := env.Get(envAPIKey, "")
 	if apiKey == "" {
 		log.Fatal("openai api key is required")
@@ -31,7 +38,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error
 		Model: c.model,
 		Messages: []InputMessage{
 			{
-				Role: roleSystem, Content: prompt,
+				Role: roleSystem, Content: prompt.Get(input),
 			},
 			{Role: roleUser, Content: input},
 		},

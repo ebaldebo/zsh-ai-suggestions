@@ -8,11 +8,30 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai"
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/ollama"
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/openai"
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
+)
+
+type aiType string
+
+const (
+	OpenAI aiType = "openai"
+	Ollama aiType = "ollama"
 )
 
 func main() {
-	suggester := openai.NewOpenAIClient()
+	aiType := aiType(env.Get("ZSH_AI_SUGGESTIONS_TYPE", "openai"))
+	var suggester ai.Suggester
+	switch aiType {
+	case OpenAI:
+		suggester = openai.New()
+	case Ollama:
+		suggester = ollama.New()
+	default:
+		log.Fatalf("unsupported AI type: %s", aiType)
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 
