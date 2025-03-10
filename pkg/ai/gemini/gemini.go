@@ -1,4 +1,4 @@
-package openai
+package gemini
 
 import (
 	"bytes"
@@ -13,33 +13,36 @@ import (
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/prompt"
 )
 
-type OpenAIClient struct {
+type GeminiClient struct {
 	httpClient *http.Client
 	apiKey     string
 	model      string
 }
 
-func New(httpClient *http.Client) *OpenAIClient {
+func New(httpClient *http.Client) *GeminiClient {
 	apiKey := env.Get(envAPIKey, "")
 	if apiKey == "" {
-		log.Fatal("openai api key is required")
+		log.Fatal("gemini api key is required")
 	}
 
-	return &OpenAIClient{
+	return &GeminiClient{
 		httpClient: httpClient,
 		apiKey:     apiKey,
 		model:      env.Get(envModel, defaultModel),
 	}
 }
 
-func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error) {
+func (c *GeminiClient) Suggest(ctx context.Context, input string) (string, error) {
 	request := Request{
-		Model: c.model,
-		Messages: []InputMessage{
-			{
-				Role: roleSystem, Content: prompt.Get(input),
+		SystemInstruction: Instruction{
+			Parts: []Part{
+				{Text: prompt.Get(input)},
 			},
-			{Role: roleUser, Content: input},
+		},
+		Contents: Instruction{
+			Parts: []Part{
+				{Text: input},
+			},
 		},
 	}
 
@@ -48,19 +51,16 @@ func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIURL, bytes.NewBuffer(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(baseUrl, c.model), bytes.NewBuffer(payload))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	headers := map[string]string{
-		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + c.apiKey,
-	}
+	req.Header.Set("Content-Type", "application/json")
 
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
+	query := req.URL.Query()
+	query.Add("key", c.apiKey)
+	req.URL.RawQuery = query.Encode()
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("openai API error (%d): %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("gemini API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var response Response
@@ -82,9 +82,9 @@ func (c *OpenAIClient) Suggest(ctx context.Context, input string) (string, error
 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	if len(response.Choices) == 0 || response.Choices[0].Message.Content == "" {
-		return "", fmt.Errorf("no suggestions returned by openai")
+	if len(response.Candidates) == 0 || response.Candidates[0].Content.Parts[0].Text == "" {
+		return "", fmt.Errorf("no suggestion from gemini")
 	}
 
-	return response.Choices[0].Message.Content, nil
+	return response.Candidates[0].Content.Parts[0].Text, nil
 }

@@ -5,10 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai"
+	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/gemini"
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/ollama"
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/openai"
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
@@ -19,10 +22,13 @@ type aiType string
 const (
 	OpenAI aiType = "openai"
 	Ollama aiType = "ollama"
+	Gemini aiType = "gemini"
 )
 
 func Run() {
-	suggester := getSuggester()
+	httpClient := createHttpClient()
+
+	suggester := getSuggester(httpClient)
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -47,14 +53,22 @@ func Run() {
 	}
 }
 
-func getSuggester() ai.Suggester {
+func createHttpClient() *http.Client {
+	return &http.Client{
+		Timeout: 10 * time.Second,
+	}
+}
+
+func getSuggester(httpClient *http.Client) ai.Suggester {
 	aiType := aiType(env.Get(envAIType, defaultAIType))
 	var suggester ai.Suggester
 	switch aiType {
 	case OpenAI:
-		suggester = openai.New()
+		suggester = openai.New(httpClient)
 	case Ollama:
-		suggester = ollama.New()
+		suggester = ollama.New(httpClient)
+	case Gemini:
+		suggester = gemini.New(httpClient)
 	default:
 		log.Fatalf("unsupported AI type: %s", aiType)
 	}

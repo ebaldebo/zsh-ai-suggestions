@@ -16,9 +16,9 @@ type OllamaClient struct {
 	model      string
 }
 
-func New() *OllamaClient {
+func New(httpClient *http.Client) *OllamaClient {
 	return &OllamaClient{
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 		baseURL:    "http://localhost:11434", // TODO: env var
 		model:      "llama3.1",               // TODO: env var
 	}
