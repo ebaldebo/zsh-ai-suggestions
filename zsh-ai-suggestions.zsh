@@ -1,3 +1,30 @@
+#!/usr/bin/env zsh
+# zsh-ai-suggestions plugin
+
+0=$((%):-%N)
+PLUGIN_DIR="${0:A:h}"
+
+_zsh_ai_suggestions_install() {
+  local install_dir="$HOME/.local/bin"
+  local bin_path="$install_dir/zsh-ai-suggestions"
+
+  if [[ ! -x "$bin_path" ]]; then
+    echo "zsh-ai-suggestions binary not found, installing..."
+    mkdir -p "$install_dir"
+
+    if [[ -f "$PLUGIN_DIR/install.sh"]]; then
+      bash "$PLUGIN_DIR/install.sh"
+    else
+      echo "Error: install.sh not found"
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+_zsh_ai_suggestions_install || return 1
+
 AI_SUGGESTIONS_BIN=$(command -v zsh-ai-suggestions || echo "$HOME/.local/bin/zsh-ai-suggestions")
 
 coproc "$AI_SUGGESTIONS_BIN"
