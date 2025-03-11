@@ -1,8 +1,7 @@
 #!/usr/bin/env zsh
 # zsh-ai-suggestions plugin
 
-0=$((%):-%N)
-PLUGIN_DIR="${0:A:h}"
+PLUGIN_DIR="${${(%):-%N}:A:h}"
 
 _zsh_ai_suggestions_install() {
   local install_dir="$HOME/.local/bin"
