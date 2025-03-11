@@ -1,5 +1,5 @@
-#!/usr/bin/env zsh
 # zsh-ai-suggestions plugin
+[[ -o interactive ]] || return 0
 
 PLUGIN_DIR="${${(%):-%N}:A:h}"
 
@@ -26,10 +26,10 @@ _zsh_ai_suggestions_install || return 1
 
 AI_SUGGESTIONS_BIN=$(command -v zsh-ai-suggestions || echo "$HOME/.local/bin/zsh-ai-suggestions")
 
-until [[ -x "$AI_SUGGESTIONS_BIN" ]]; do
-    echo "Waiting for zsh-ai-suggestions binary..."
-    sleep 1
-done
+if [[ ! -x "$AI_SUGGESTIONS_BIN" ]]; then
+  echo "Error: zsh-ai-suggestions binary not found or not executable"
+  return 1
+fi
 
 coproc "$AI_SUGGESTIONS_BIN"
 if [[ $? -ne 0 ]]; then
