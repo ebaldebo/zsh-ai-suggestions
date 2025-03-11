@@ -5,7 +5,7 @@ set -e
 VERSION="v0.1.0-beta"
 INSTALL_DIR="$HOME/.local/bin"
 ZSH_PLUGIN_DIR="$HOME/.zsh/plugins/zsh-ai-suggestions"
-REPO_URL="https://github.com/ebaldebo/zsh-ai-suggestions/relases/download/${VERSION}"
+REPO_URL="https://github.com/ebaldebo/zsh-ai-suggestions/releases/download/${VERSION}"
 TEMP_DIR=$(mktemp -d)
 
 cleanup() {
