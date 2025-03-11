@@ -1,0 +1,7 @@
+services:
+  zsh-ai-suggestions-playground:
+    build: .
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
