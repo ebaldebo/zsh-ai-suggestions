@@ -11,7 +11,7 @@ _zsh_ai_suggestions_install() {
     echo "zsh-ai-suggestions binary not found, installing..."
     mkdir -p "$install_dir"
 
-    if [[ -f "$PLUGIN_DIR/install.sh"]]; then
+    if [[ -f "$PLUGIN_DIR/install.sh" ]]; then
       bash "$PLUGIN_DIR/install.sh"
     else
       echo "Error: install.sh not found"
