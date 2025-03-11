@@ -26,6 +26,11 @@ _zsh_ai_suggestions_install || return 1
 
 AI_SUGGESTIONS_BIN=$(command -v zsh-ai-suggestions || echo "$HOME/.local/bin/zsh-ai-suggestions")
 
+until [[ -x "$AI_SUGGESTIONS_BIN" ]]; do
+    echo "Waiting for zsh-ai-suggestions binary..."
+    sleep 1
+done
+
 coproc "$AI_SUGGESTIONS_BIN"
 if [[ $? -ne 0 ]]; then
   echo "Failed to start AI suggestions service"
@@ -46,6 +51,11 @@ function suggest() {
   local input="$BUFFER"
   local suggestion=""
   local old_tmout=$TMOUT
+
+  if ! { true >&3 2>/dev/null; }; then
+    echo "Error: AI suggestions service is not running!"
+    return 1
+  fi
 
   TMOUT=1
   print -n -- "$input\n" >&3
