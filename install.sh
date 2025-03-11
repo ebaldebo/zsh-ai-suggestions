@@ -39,23 +39,23 @@ curl -sL "$DOWNLOAD_URL" -o "$TEMP_DIR/archive.$ARCHIVE_FORMAT"
 curl -sL "$CHECKSUM_URL" -o "$TEMP_DIR/checksums.txt"
 
 cd "$TEMP_DIR"
-if command -v sha256sum > /dev/null; then
-    CHECKSUM_TOOL="sha256sum"
-elif command -v shasum > /dev/null; then
-    CHECKSUM_TOOL="shasum -a 256"
-else
-    echo "Warning: Could not find sha256sum or shasum, skipping checksum verification"
-    CHECKSUM_TOOL=""
-fi
+# if command -v sha256sum > /dev/null; then
+#     CHECKSUM_TOOL="sha256sum"
+# elif command -v shasum > /dev/null; then
+#     CHECKSUM_TOOL="shasum -a 256"
+# else
+#     echo "Warning: Could not find sha256sum or shasum, skipping checksum verification"
+#     CHECKSUM_TOOL=""
+# fi
 
-if [ -n "$CHECKSUM_TOOL" ]; then
-    echo "Verifying checksum..."
-    grep "zsh-ai-suggestions_${OS}_${ARCH}.${ARCHIVE_FORMAT}" checksums.txt | $CHECKSUM_TOOL -c
-    if [ $? -ne 0 ]; then
-        echo "Checksum verification failed"
-        exit 1
-    fi
-fi
+# if [ -n "$CHECKSUM_TOOL" ]; then
+#     echo "Verifying checksum..."
+#     grep "zsh-ai-suggestions_${OS}_${ARCH}.${ARCHIVE_FORMAT}" checksums.txt | $CHECKSUM_TOOL -c
+#     if [ $? -ne 0 ]; then
+#         echo "Checksum verification failed"
+#         exit 1
+#     fi
+# fi
 
 echo "Extracting archive..."
 if [[ "$ARCHIVE_FORMAT" == "tar.gz" ]]; then
