@@ -18,8 +18,10 @@ function log() {
 function suggest() {
   local input="$BUFFER"
   local suggestion=""
-  local dots=""
-  local max_dots=5
+  local braille_frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴")
+  local braille_index=0
+  local start_time
+  local original_cursor_pos="$CURSOR"
 
   if [[ -z "$input" ]]; then
     log "empty input, skipping"
@@ -32,20 +34,36 @@ function suggest() {
   log "writing input: $input"
   echo "$input" > "$AI_INPUT_FILE"
 
-  local start_time=$(date +%s)
+  start_time=$(date +%s)
+
   while [[ ! -f "$AI_OUTPUT_FILE" ]]; do
     sleep 0.2
-    if [[ ${#dots} -ge $max_dots ]]; then
-      dots=""
-    fi
-    dots+="."
 
-    BUFFER="$input$dots"
-    CURSOR=${#BUFFER}
+    local braille_char="${braille_frames[$braille_index % ${#braille_frames}]}"
+    braille_index=$((braille_index + 1))
+
+    local buffer_before=""
+    local buffer_after=""
+
+    if [[ "$original_cursor_pos" -ge "${#input}" ]]; then
+      buffer_before="$input"
+      buffer_after=""
+    else
+      buffer_before="${input[1,$((original_cursor_pos - 1))]}"
+      buffer_after="${input[$((original_cursor_pos + 1)),-1]}"
+    fi
+
+    BUFFER="${buffer_before}${braille_char}${buffer_after}"
+
+    CURSOR="$original_cursor_pos"
+
     zle -R
 
     if (( $(date +%s) - start_time >= 5 )); then
       log "timeout waiting for AI response (Waited 5 seconds)"
+      BUFFER="$input timeout"
+      CURSOR=${#BUFFER}
+      zle -R
       return
     fi
   done

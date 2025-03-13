@@ -3,7 +3,13 @@ FROM debian:bookworm-slim
 ARG HOME_DIR="/home/test"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    zsh git bash curl ca-certificates vim
+    zsh git bash curl ca-certificates vim locales
+
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen
+
+ENV LANG="en_US.UTF-8"
+ENV LC_ALL="en_US.UTF-8"
 
 RUN addgroup --system test && adduser --system --ingroup test --shell /bin/zsh --home "$HOME_DIR" test
 
