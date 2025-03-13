@@ -21,6 +21,11 @@ function suggest() {
   local dots=""
   local max_dots=5
 
+  if [[ -z "$input" ]]; then
+    log "empty input, skipping"
+    return
+  fi
+
   log "clearing old output file: $AI_OUTPUT_FILE"
   rm -f "$AI_OUTPUT_FILE"
 
