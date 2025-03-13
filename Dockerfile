@@ -18,10 +18,26 @@ ENV PATH="$HOME_DIR/.local/bin:$PATH" \
 
 COPY bin/zsh-ai-suggestions "$HOME_DIR/.local/bin/zsh-ai-suggestions"
 COPY zsh-ai-suggestions.zsh "$HOME_DIR/zsh-ai-suggestions.zsh"
+COPY zsh-ai-suggestions.plugin.zsh "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 
 RUN chown -R test:test "$HOME_DIR" && \
     chmod +x "$HOME_DIR/zsh-ai-suggestions.zsh" && \
-    chmod +x "$HOME_DIR/.local/bin/zsh-ai-suggestions"
+    chmod +x "$HOME_DIR/.local/bin/zsh-ai-suggestions" && \
+    chmod +x "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
+
+# Dockerfile with zinit
+RUN echo 'ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"' > ~/.zshrc && \
+echo '' >> ~/.zshrc && \
+echo '# Download Zinit if it does not exist' >> ~/.zshrc && \
+echo 'if [ ! -d "$ZINIT_HOME" ]; then' >> ~/.zshrc && \
+echo '   mkdir -p "$(dirname $ZINIT_HOME)"' >> ~/.zshrc && \
+echo '   git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"' >> ~/.zshrc && \
+echo 'fi' >> ~/.zshrc && \
+echo '' >> ~/.zshrc && \
+echo '# Source/Load zinit' >> ~/.zshrc && \
+echo 'source "${ZINIT_HOME}/zinit.zsh"' >> ~/.zshrc && \
+echo '' >> ~/.zshrc && \
+echo 'zinit light $HOME' >> ~/.zshrc
 
 USER test
 WORKDIR "$HOME_DIR"

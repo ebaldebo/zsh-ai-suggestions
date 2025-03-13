@@ -1,4 +1,3 @@
-#!/usr/bin/env zsh
 [[ -o interactive ]] || return 0
 
 AI_TMP_DIR="/tmp/zsh-ai-suggestions"
