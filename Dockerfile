@@ -3,7 +3,7 @@ FROM debian:bookworm-slim
 ARG HOME_DIR="/home/test"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    zsh git bash curl ca-certificates
+    zsh git bash curl ca-certificates vim
 
 RUN addgroup --system test && adduser --system --ingroup test --shell /bin/zsh --home "$HOME_DIR" test
 

@@ -18,6 +18,8 @@ function log() {
 function suggest() {
   local input="$BUFFER"
   local suggestion=""
+  local dots=""
+  local max_dots=5
 
   log "clearing old output file: $AI_OUTPUT_FILE"
   rm -f "$AI_OUTPUT_FILE"
@@ -27,7 +29,16 @@ function suggest() {
 
   local start_time=$(date +%s)
   while [[ ! -f "$AI_OUTPUT_FILE" ]]; do
-    sleep 0.1
+    sleep 0.2
+    if [[ ${#dots} -ge $max_dots ]]; then
+      dots=""
+    fi
+    dots+="."
+
+    BUFFER="$input$dots"
+    CURSOR=${#BUFFER}
+    zle -R
+
     if (( $(date +%s) - start_time >= 5 )); then
       log "timeout waiting for AI response (Waited 5 seconds)"
       return
@@ -47,10 +58,10 @@ function suggest() {
   if [[ -n "$suggestion" ]]; then
     log "applying suggestion: $suggestion"
     BUFFER="$suggestion"
-    zle end-of-line
-    zle redisplay
+    CURSOR=${#BUFFER}
+    zle -R
   else
-    log "No suggestion received"
+    log "no suggestion received"
   fi
 }
 
