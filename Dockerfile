@@ -1,14 +1,23 @@
-FROM alpine:latest
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache zsh git bash curl && \
-    adduser -D -s /bin/zsh test
+ARG HOME_DIR="/home/test"
 
-COPY install.sh home/test/install.sh
-COPY zsh-ai-suggestions.zsh /home/test/zsh-ai-suggestions.zsh
-RUN chown -R test:test /home/test
-RUN chmod +x /home/test/install.sh
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    zsh git bash curl ca-certificates
+
+RUN addgroup --system test && adduser --system --ingroup test --shell /bin/zsh --home "$HOME_DIR" test
+
+ENV PATH="$HOME_DIR/.local/bin:$PATH" \
+    HOME="$HOME_DIR"
+
+COPY bin/zsh-ai-suggestions "$HOME_DIR/.local/bin/zsh-ai-suggestions"
+COPY zsh-ai-suggestions.zsh "$HOME_DIR/zsh-ai-suggestions.zsh"
+
+RUN chown -R test:test "$HOME_DIR" && \
+    chmod +x "$HOME_DIR/zsh-ai-suggestions.zsh" && \
+    chmod +x "$HOME_DIR/.local/bin/zsh-ai-suggestions"
 
 USER test
-WORKDIR /home/test
+WORKDIR "$HOME_DIR"
 
-CMD ["zsh", "-i"]
+CMD ["zsh", "-li"]

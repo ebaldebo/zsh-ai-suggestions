@@ -10,5 +10,5 @@ run:
 	go run cmd/main.go
 
 docker: build
-	@docker compose build --no-cache
+	@docker compose build
 	@docker compose run --rm --remove-orphans zsh-ai-suggestions-playground
