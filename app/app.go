@@ -3,11 +3,16 @@ package app
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai"
@@ -37,12 +42,14 @@ var (
 func Run() {
 	logger := logger.New()
 
-	cleanupStaleFiles(logger)
+	cleanTempDirectory(logger)
 
 	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
 		logger.Error("failed to create tmp directory: %v", err)
 		os.Exit(1)
 	}
+
+	setupCleanOnExit(logger)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -60,6 +67,12 @@ func Run() {
 
 	httpClient := createHttpClient()
 	suggester := getSuggester(httpClient, logger)
+
+	cleanUpOnExit := env.Get(envCleanupOnExit, defaultCleanupOnExit) == "true"
+	if cleanUpOnExit {
+		logger.Info("clean up on exit enabled")
+		go monitorTerminals(logger)
+	}
 
 	for {
 		select {
@@ -92,6 +105,52 @@ func shouldProcessFile(filename string, logger logger.Logger) bool {
 
 	processingFiles[filename] = true
 	return true
+}
+
+func monitorTerminals(logger logger.Logger) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		count, err := countZshProcesses()
+		if err != nil {
+			logger.Warn("failed to count zsh processes: %v", err)
+			continue
+		}
+
+		logger.Debug("zsh processes: %d", count)
+
+		if count == 0 {
+			logger.Info("no zsh processes found, cleaning up")
+			cleanTempDirectory(logger)
+			os.Exit(0)
+		}
+	}
+}
+
+func countZshProcesses() (int, error) {
+	var cmd *exec.Cmd
+
+	if _, err := os.Stat("/proc"); err == nil {
+		cmd = exec.Command("pgrep", "-c", "zsh")
+	} else {
+		cmd = exec.Command("sh", "-c", "ps -e | grep -c '[z]sh'")
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to count zsh processes: %w", err)
+	}
+
+	count, err := strconv.Atoi(strings.TrimSpace(string(output)))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse zsh process count: %w", err)
+	}
+
+	return count, nil
 }
 
 func finishProcessing(filename string) {
@@ -153,21 +212,45 @@ func processInput(suggester ai.Suggester, inputFile string, logger logger.Logger
 	os.Remove(inputFile)
 }
 
-func cleanupStaleFiles(logger logger.Logger) {
-	files, err := filepath.Glob(filepath.Join(tmpDir, "zsh-ai-input-*"))
-	if err == nil && len(files) > 0 {
-		logger.Debug("cleaning up %d stale files", len(files))
-		for _, file := range files {
-			os.Remove(file)
+func setupCleanOnExit(logger logger.Logger) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		logger.Info("shutdown signal received, cleaning up")
+		cleanTempDirectory(logger)
+		os.Exit(0)
+	}()
+}
+
+func cleanTempDirectory(logger logger.Logger) {
+	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
+		return
+	}
+
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		logger.Warn("failed to read temp directory: %v", err)
+		return
+	}
+
+	count := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		path := filepath.Join(tmpDir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			logger.Debug("failed to remove file %s: %v", path, err)
+		} else {
+			count++
 		}
 	}
 
-	files, err = filepath.Glob(filepath.Join(tmpDir, "*.tmp"))
-	if err == nil && len(files) > 0 {
-		logger.Debug("cleaning up %d stale files", len(files))
-		for _, file := range files {
-			os.Remove(file)
-		}
+	if count > 0 {
+		logger.Info("cleaned up %d files", count)
 	}
 }
 

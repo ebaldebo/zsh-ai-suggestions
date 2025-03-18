@@ -4,11 +4,7 @@ setopt NO_CHECK_JOBS NO_HUP
 
 : ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
 : ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
-: ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
-: ${ZSH_AI_SUGGESTIONS_LOG_RETENTION_DAYS:=1}
-: ${ZSH_AI_SUGGESTIONS_CLEANUP_ON_EXIT:=false}
-: ${ZSH_AI_SUGGESTIONS_LOG_TO_FILES:=false}
-: ${ZSH_AI_SUGGESTIONS_LOG_LEVEL:="info"}
+: ${ZSH_AI_SUGGESTIONS_DEBUG:=true}
 
 AI_TMP_DIR="/tmp/zsh-ai-suggestions"
 AI_INPUT_FILE="$AI_TMP_DIR/zsh-ai-input-$$"
@@ -17,25 +13,9 @@ mkdir -p "$AI_TMP_DIR"
 
 function cleanup() {
   rm -f "$AI_INPUT_FILE" "$AI_OUTPUT_FILE"
-
-  if [[ "$ZSH_AI_SUGGESTIONS_CLEANUP_ON_EXIT" == "true" ]]; then
-    local terminal_count=$(pgrep -f "zsh" | wc -l)
-    if [[ "$terminal_count" -eq 1 ]]; then
-      log "last terminal closing, stopping backend"
-      pkill -f "zsh-ai-suggestions" 2>/dev/null
-    fi
-  fi
 }
 trap cleanup EXIT
 
-function manage_logs() {
-  find "$AI_TMP_DIR" -name "backend.*.log" -type f -mtime +${ZSH_AI_SUGGESTIONS_LOG_RETENTION_DAYS} -delete 2>/dev/null
-  
-  local log_count=$(find "$AI_TMP_DIR" -name "backend.*.log" | wc -l)
-  if [[ "$log_count" -gt 20 ]]; then
-    find "$AI_TMP_DIR" -name "backend.*.log" -type f | sort | head -n $(($log_count - 20)) | xargs rm -f 2>/dev/null
-  fi
-}
 
 function log() {
   if [[ "$ZSH_AI_SUGGESTIONS_DEBUG" == "true" ]]; then
@@ -61,31 +41,12 @@ function start_backend() {
     return 1
   fi
   
-  setopt local_options
-  setopt no_notify no_monitor
+  setopt local_options no_notify no_monitor
+  { "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null & } 2>/dev/null
+  local pid=$!
+  disown %% 2>/dev/null
   
-  if [[ "$ZSH_AI_SUGGESTIONS_LOG_TO_FILES" == "true" ]]; then
-    local timestamp=$(date +%Y%m%d%H%M%S)
-    local stdout_log="$AI_TMP_DIR/backend.stdout.$timestamp.log"
-    local stderr_log="$AI_TMP_DIR/backend.stderr.$timestamp.log"
-    
-    find "$AI_TMP_DIR" -name "backend.*.log" -type f -mtime +1 -delete 2>/dev/null
-    
-    { "$ZSH_AI_SUGGESTIONS_BINARY" > "$stdout_log" 2> "$stderr_log" & } 2>/dev/null
-    local pid=$!
-    
-    disown %% 2>/dev/null
-    
-    log "backend started in background with PID: $pid (logging to files)"
-  else
-    { "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null & } 2>/dev/null
-    local pid=$!
-
-    disown %% 2>/dev/null
-    
-    log "backend started in background with PID: $pid (logging disabled)"
-  fi
-  
+  log "backend started in background with PID: $pid"
   sleep 0.2
   return 0
 }
