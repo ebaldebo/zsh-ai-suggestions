@@ -1,5 +1,7 @@
 [[ -o interactive ]] || return 0
 
+setopt NO_CHECK_JOBS NO_HUP
+
 : ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
 : ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
 : ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
@@ -59,6 +61,9 @@ function start_backend() {
     return 1
   fi
   
+  setopt local_options
+  setopt no_notify no_monitor
+  
   if [[ "$ZSH_AI_SUGGESTIONS_LOG_TO_FILES" == "true" ]]; then
     local timestamp=$(date +%Y%m%d%H%M%S)
     local stdout_log="$AI_TMP_DIR/backend.stdout.$timestamp.log"
@@ -66,12 +71,18 @@ function start_backend() {
     
     find "$AI_TMP_DIR" -name "backend.*.log" -type f -mtime +1 -delete 2>/dev/null
     
-    "$ZSH_AI_SUGGESTIONS_BINARY" > "$stdout_log" 2> "$stderr_log" &
+    { "$ZSH_AI_SUGGESTIONS_BINARY" > "$stdout_log" 2> "$stderr_log" & } 2>/dev/null
     local pid=$!
+    
+    disown %% 2>/dev/null
+    
     log "backend started in background with PID: $pid (logging to files)"
   else
-    "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null &
+    { "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null & } 2>/dev/null
     local pid=$!
+
+    disown %% 2>/dev/null
+    
     log "backend started in background with PID: $pid (logging disabled)"
   fi
   
