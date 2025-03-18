@@ -1,21 +1,19 @@
 [[ -o interactive ]] || return 0
-
 setopt NO_CHECK_JOBS NO_HUP
 
 : ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
 : ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
-: ${ZSH_AI_SUGGESTIONS_DEBUG:=true}
+: ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
+: ${ZSH_AI_SUGGESTIONS_TMPDIR:="/tmp/zsh-ai-suggestions"}
 
-AI_TMP_DIR="/tmp/zsh-ai-suggestions"
-AI_INPUT_FILE="$AI_TMP_DIR/zsh-ai-input-$$"
-AI_OUTPUT_FILE="$AI_TMP_DIR/zsh-ai-output-$$"
-mkdir -p "$AI_TMP_DIR"
+mkdir -p "$ZSH_AI_SUGGESTIONS_TMPDIR"
+AI_INPUT_FILE="$ZSH_AI_SUGGESTIONS_TMPDIR/zsh-ai-input-$$"
+AI_OUTPUT_FILE="$ZSH_AI_SUGGESTIONS_TMPDIR/zsh-ai-output-$$"
 
 function cleanup() {
   rm -f "$AI_INPUT_FILE" "$AI_OUTPUT_FILE"
 }
 trap cleanup EXIT
-
 
 function log() {
   if [[ "$ZSH_AI_SUGGESTIONS_DEBUG" == "true" ]]; then
@@ -35,6 +33,9 @@ function is_backend_running() {
 
 function start_backend() {
   log "starting backend: $ZSH_AI_SUGGESTIONS_BINARY"
+  log "using tmp directory: $ZSH_AI_SUGGESTIONS_TMPDIR"
+
+  export ZSH_AI_SUGGESTIONS_TMPDIR
   
   if [[ ! -x "$ZSH_AI_SUGGESTIONS_BINARY" ]]; then
     log "backend binary not found or not executable: $ZSH_AI_SUGGESTIONS_BINARY"
@@ -45,7 +46,6 @@ function start_backend() {
   { "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null & } 2>/dev/null
   local pid=$!
   disown %% 2>/dev/null
-  
   log "backend started in background with PID: $pid"
   sleep 0.2
   return 0
@@ -79,13 +79,11 @@ function suggest() {
   start_time=$(date +%s)
   while [[ ! -f "$AI_OUTPUT_FILE" ]]; do
     sleep 0.1
-
     local braille_char="${braille_frames[$braille_index % ${#braille_frames}]}"
     ((braille_index++))
 
     local buffer_before=""
     local buffer_after=""
-
     if (( original_cursor_pos >= ${#input} )); then
       buffer_before="$input"
       buffer_after=""
@@ -113,7 +111,6 @@ function suggest() {
 
   if [[ -s "$AI_OUTPUT_FILE" ]]; then
     suggestion=$(<"$AI_OUTPUT_FILE")
-
     if [[ -n "$suggestion" ]]; then
       log "applying suggestion: $suggestion"
       BUFFER="$suggestion"

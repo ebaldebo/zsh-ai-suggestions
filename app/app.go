@@ -24,8 +24,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-const tmpDir = "/tmp/zsh-ai-suggestions"
-
 type aiType string
 
 const (
@@ -42,14 +40,16 @@ var (
 func Run() {
 	logger := logger.New()
 
-	cleanTempDirectory(logger)
+	tmpDir := env.Get(envTmpDir, defaultTmpDir)
+
+	cleanTempDirectory(tmpDir, logger)
 
 	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
 		logger.Error("failed to create tmp directory: %v", err)
 		os.Exit(1)
 	}
 
-	setupCleanOnExit(logger)
+	setupCleanOnExit(tmpDir, logger)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -58,7 +58,7 @@ func Run() {
 	}
 	defer watcher.Close()
 
-	logger.Info("suggestion server started")
+	logger.Info("suggestion server started with tmp dir: %s", tmpDir)
 	err = watcher.Add(tmpDir)
 	if err != nil {
 		logger.Error("failed to watch tmp directory: %v", err)
@@ -71,7 +71,7 @@ func Run() {
 	cleanUpOnExit := env.Get(envCleanupOnExit, defaultCleanupOnExit) == "true"
 	if cleanUpOnExit {
 		logger.Info("clean up on exit enabled")
-		go monitorTerminals(logger)
+		go monitorTerminals(tmpDir, logger)
 	}
 
 	for {
@@ -107,7 +107,7 @@ func shouldProcessFile(filename string, logger logger.Logger) bool {
 	return true
 }
 
-func monitorTerminals(logger logger.Logger) {
+func monitorTerminals(tmpDir string, logger logger.Logger) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -122,7 +122,7 @@ func monitorTerminals(logger logger.Logger) {
 
 		if count == 0 {
 			logger.Info("no zsh processes found, cleaning up")
-			cleanTempDirectory(logger)
+			cleanTempDirectory(tmpDir, logger)
 			os.Exit(0)
 		}
 	}
@@ -212,19 +212,19 @@ func processInput(suggester ai.Suggester, inputFile string, logger logger.Logger
 	os.Remove(inputFile)
 }
 
-func setupCleanOnExit(logger logger.Logger) {
+func setupCleanOnExit(tmpDir string, logger logger.Logger) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-c
 		logger.Info("shutdown signal received, cleaning up")
-		cleanTempDirectory(logger)
+		cleanTempDirectory(tmpDir, logger)
 		os.Exit(0)
 	}()
 }
 
-func cleanTempDirectory(logger logger.Logger) {
+func cleanTempDirectory(tmpDir string, logger logger.Logger) {
 	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 		return
 	}
