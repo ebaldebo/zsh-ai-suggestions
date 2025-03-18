@@ -3,7 +3,7 @@ FROM debian:bookworm-slim
 ARG HOME_DIR="/home/test"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    zsh git bash curl ca-certificates vim locales
+    zsh git bash curl ca-certificates vim locales procps
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen
