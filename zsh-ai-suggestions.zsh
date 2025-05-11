@@ -1,71 +1,129 @@
-# zsh-ai-suggestions plugin
 [[ -o interactive ]] || return 0
+setopt NO_CHECK_JOBS NO_HUP
 
-PLUGIN_DIR="${${(%):-%N}:A:h}"
+: ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
+: ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
+: ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
+: ${ZSH_AI_SUGGESTIONS_TMPDIR:="/tmp/zsh-ai-suggestions"}
 
-_zsh_ai_suggestions_install() {
-  local install_dir="$HOME/.local/bin"
-  local bin_path="$install_dir/zsh-ai-suggestions"
-
-  if [[ ! -x "$bin_path" ]]; then
-    echo "zsh-ai-suggestions binary not found, installing..."
-    mkdir -p "$install_dir"
-
-    if [[ -f "$PLUGIN_DIR/install.sh" ]]; then
-      bash "$PLUGIN_DIR/install.sh"
-    else
-      echo "Error: install.sh not found"
-      return 1
-    fi
-  fi
-
-  return 0
-}
-
-_zsh_ai_suggestions_install || return 1
-
-AI_SUGGESTIONS_BIN=$(command -v zsh-ai-suggestions || echo "$HOME/.local/bin/zsh-ai-suggestions")
-
-if [[ ! -x "$AI_SUGGESTIONS_BIN" ]]; then
-  echo "Error: zsh-ai-suggestions binary not found or not executable"
-  return 1
-fi
-
-coproc "$AI_SUGGESTIONS_BIN"
-if [[ $? -ne 0 ]]; then
-  echo "Failed to start AI suggestions service"
-  return 1
-fi
-
-exec 3>&p
-exec 4<&p
+mkdir -p "$ZSH_AI_SUGGESTIONS_TMPDIR"
+AI_INPUT_FILE="$ZSH_AI_SUGGESTIONS_TMPDIR/zsh-ai-input-$$"
+AI_OUTPUT_FILE="$ZSH_AI_SUGGESTIONS_TMPDIR/zsh-ai-output-$$"
 
 function cleanup() {
-  [[ -n $COPROC_PID ]] && kill "$COPROC_PID" 2>/dev/null
-  exec 3>&- 4<&-
+  rm -f "$AI_INPUT_FILE" "$AI_OUTPUT_FILE"
+}
+trap cleanup EXIT
+
+function log() {
+  if [[ "$ZSH_AI_SUGGESTIONS_DEBUG" == "true" ]]; then
+    echo "$1" > /dev/tty
+  fi
 }
 
-trap cleanup EXIT SIGTERM SIGINT
+function is_backend_running() {
+  if command -v pgrep > /dev/null 2>&1; then
+    pgrep -f "zsh-ai-suggestions" > /dev/null
+    return $?
+  else
+    ps aux | grep "[z]sh-ai-suggestions" | grep -v grep > /dev/null
+    return $?
+  fi
+}
+
+function start_backend() {
+  log "starting backend: $ZSH_AI_SUGGESTIONS_BINARY"
+  log "using tmp directory: $ZSH_AI_SUGGESTIONS_TMPDIR"
+
+  export ZSH_AI_SUGGESTIONS_TMPDIR
+  
+  if [[ ! -x "$ZSH_AI_SUGGESTIONS_BINARY" ]]; then
+    log "backend binary not found or not executable: $ZSH_AI_SUGGESTIONS_BINARY"
+    return 1
+  fi
+  
+  setopt local_options no_notify no_monitor
+  { "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null 2> /dev/null & } 2>/dev/null
+  local pid=$!
+  disown %% 2>/dev/null
+  log "backend started in background with PID: $pid"
+  sleep 0.2
+  return 0
+}
 
 function suggest() {
   local input="$BUFFER"
   local suggestion=""
-  local old_tmout=$TMOUT
+  local braille_frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴")
+  local braille_index=0
+  local start_time
+  local original_cursor_pos="$CURSOR"
 
-  if ! { true >&3 2>/dev/null; }; then
-    echo "Error: AI suggestions service is not running!"
-    return 1
+  if [[ -z "$input" ]]; then
+    log "empty input, skipping"
+    return
   fi
 
-  TMOUT=1
-  print -n -- "$input\n" >&3
-  read -u4 suggestion || suggestion=""
-  TMOUT=$old_tmout
+  log "clearing old output file: $AI_OUTPUT_FILE"
+  rm -f "$AI_OUTPUT_FILE"
 
-  if [[ -n "$suggestion" ]]; then
-    BUFFER="$suggestion"
-    zle end-of-line
+  if ! is_backend_running; then
+    start_backend || return 1
+  else
+    log "backend already running"
   fi
+  
+  log "writing input: $input"
+  echo "$input" > "$AI_INPUT_FILE"
+
+  start_time=$(date +%s)
+  while [[ ! -f "$AI_OUTPUT_FILE" ]]; do
+    sleep 0.1
+    local braille_char="${braille_frames[$braille_index % ${#braille_frames}]}"
+    ((braille_index++))
+
+    local buffer_before=""
+    local buffer_after=""
+    if (( original_cursor_pos >= ${#input} )); then
+      buffer_before="$input"
+      buffer_after=""
+    else
+      buffer_before="${input:0:$original_cursor_pos}"
+      buffer_after="${input:$original_cursor_pos}"
+    fi
+
+    BUFFER="${buffer_before}${braille_char}${buffer_after}"
+    CURSOR="$original_cursor_pos"
+    zle -R
+
+    if (( $(date +%s) - start_time >= ZSH_AI_SUGGESTIONS_TIMEOUT )); then
+      log "timeout waiting for ai response (waited $ZSH_AI_SUGGESTIONS_TIMEOUT seconds)"
+      BUFFER="$input"
+      CURSOR="$original_cursor_pos"
+      zle -R
+      return 1
+    fi
+  done
+
+  local end_time=$(date +%s)
+  local duration=$((end_time - start_time))
+  log "response file found after ${duration} seconds"
+
+  if [[ -s "$AI_OUTPUT_FILE" ]]; then
+    suggestion=$(<"$AI_OUTPUT_FILE")
+    if [[ -n "$suggestion" ]]; then
+      log "applying suggestion: $suggestion"
+      BUFFER="$suggestion"
+      CURSOR=${#BUFFER}
+      zle -R
+    else
+      log "empty suggestion received"
+    fi
+  else
+    log "output file is empty"
+  fi
+
+  rm -f "$AI_INPUT_FILE" "$AI_OUTPUT_FILE"
 }
 
 zle -N suggest
