@@ -127,4 +127,4 @@ function suggest() {
 }
 
 zle -N suggest
-bindkey "^@" suggest
+bindkey "^_" suggest
