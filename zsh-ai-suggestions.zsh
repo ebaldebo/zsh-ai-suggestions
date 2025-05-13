@@ -1,7 +1,9 @@
 [[ -o interactive ]] || return 0
 setopt NO_CHECK_JOBS NO_HUP
 
-: ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
+local _plugin_script_dir="${${(%):-%x}:h}"
+
+: ${ZSH_AI_SUGGESTIONS_BINARY:="$_plugin_script_dir/zsh-ai-suggestions"}
 : ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
 : ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
 : ${ZSH_AI_SUGGESTIONS_TMPDIR:="/tmp/zsh-ai-suggestions"}
@@ -23,10 +25,10 @@ function log() {
 
 function is_backend_running() {
   if command -v pgrep > /dev/null 2>&1; then
-    pgrep -f "zsh-ai-suggestions" > /dev/null
+    pgrep -f "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null
     return $?
   else
-    ps aux | grep "[z]sh-ai-suggestions" | grep -v grep > /dev/null
+    ps aux | grep "[$(basename "$ZSH_AI_SUGGESTIONS_BINARY")]" | grep -v grep > /dev/null
     return $?
   fi
 }
@@ -128,3 +130,5 @@ function suggest() {
 
 zle -N suggest
 bindkey "^_" suggest
+
+unset _plugin_script_dir
