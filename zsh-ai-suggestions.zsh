@@ -17,31 +17,51 @@ function download_binary() {
   local os_name="$(uname -s)"
   local arch="$(uname -m)"
  
-  echo "detected system: ${os_name}_${arch}" >&2
+  log "detected system: ${os_name}_${arch}"
   local archive_name="${_plugin_name}_${os_name}_${arch}.tar.gz"
   local download_url="https://github.com/${ZSH_AI_SUGGESTIONS_REPO}/releases/latest/download/${archive_name}"
+  local temp_archive="$binary_dir/${archive_name}"
  
-  echo "downloading ${_plugin_name} binary from ${download_url}..." >&2
+  log "downloading ${_plugin_name} binary from ${download_url}..."
  
   mkdir -p "$binary_dir"
  
   if command -v curl >/dev/null 2>&1; then
-    curl -L -s -o "$binary_path" "$download_url"
+    curl -L -s -o "$temp_archive" "$download_url"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "$binary_path" "$download_url"
+    wget -q -O "$temp_archive" "$download_url"
   else
     echo "missing dependency, curl/wget" >&2
+    return 1
+  fi
+ 
+  if [[ ! -f "$temp_archive" ]]; then
+    echo "error: failed to download the archive." >&2
+    return 1
+  fi
+ 
+  log "extracting binary from archive..."
+  if ! tar -xzf "$temp_archive" -C "$binary_dir"; then
+    echo "error: failed to extract the archive." >&2
+    rm -f "$temp_archive"
+    return 1
+  fi
+ 
+  rm -f "$temp_archive"
+ 
+  if [[ ! -f "$binary_path" ]]; then
+    echo "error: binary not found after extraction. Archive may have a different structure." >&2
     return 1
   fi
  
   chmod +x "$binary_path"
  
   if [[ ! -x "$binary_path" ]]; then
-    echo "error: failed to download or make the binary executable." >&2
+    echo "error: failed to make the binary executable." >&2
     return 1
   fi
  
-  echo "binary successfully downloaded and installed at $binary_path." >&2
+  log "binary successfully downloaded, extracted, and installed at $binary_path."
   return 0
 }
 
