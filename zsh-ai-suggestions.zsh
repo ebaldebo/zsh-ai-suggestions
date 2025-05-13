@@ -1,10 +1,56 @@
 [[ -o interactive ]] || return 0
 setopt NO_CHECK_JOBS NO_HUP
 
-: ${ZSH_AI_SUGGESTIONS_BINARY:="$HOME/.local/bin/zsh-ai-suggestions"}
+local _plugin_script_dir="${${(%):-%x}:h}"
+local _plugin_name="zsh-ai-suggestions"
+
+: ${ZSH_AI_SUGGESTIONS_BINARY:="$_plugin_script_dir/$_plugin_name"}
 : ${ZSH_AI_SUGGESTIONS_TIMEOUT:=5}
 : ${ZSH_AI_SUGGESTIONS_DEBUG:=false}
-: ${ZSH_AI_SUGGESTIONS_TMPDIR:="/tmp/zsh-ai-suggestions"}
+: ${ZSH_AI_SUGGESTIONS_TMPDIR:="/tmp/$_plugin_name"}
+: ${ZSH_AI_SUGGESTIONS_REPO:="ebaldebo/$_plugin_name"}
+: ${ZSH_AI_SUGGESTIONS_BRANCH:="main"}
+
+function download_binary() {
+  local binary_path="$1"
+  local binary_dir="$(dirname "$binary_path")"
+  local os_name="$(uname -s)"
+  local arch="$(uname -m)"
+ 
+  echo "detected system: ${os_name}_${arch}" >&2
+  local archive_name="${_plugin_name}_${os_name}_${arch}.tar.gz"
+  local download_url="https://github.com/${ZSH_AI_SUGGESTIONS_REPO}/releases/latest/download/${archive_name}"
+ 
+  echo "downloading ${_plugin_name} binary from ${download_url}..." >&2
+ 
+  mkdir -p "$binary_dir"
+ 
+  if command -v curl >/dev/null 2>&1; then
+    curl -L -s -o "$binary_path" "$download_url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O "$binary_path" "$download_url"
+  else
+    echo "missing dependency, curl/wget" >&2
+    return 1
+  fi
+ 
+  chmod +x "$binary_path"
+ 
+  if [[ ! -x "$binary_path" ]]; then
+    echo "error: failed to download or make the binary executable." >&2
+    return 1
+  fi
+ 
+  echo "binary successfully downloaded and installed at $binary_path." >&2
+  return 0
+}
+
+if [[ ! -x "$ZSH_AI_SUGGESTIONS_BINARY" ]]; then
+  download_binary "$ZSH_AI_SUGGESTIONS_BINARY" || {
+    echo "error: failed to download zsh-ai-suggestions binary." >&2
+    return 1
+  }
+fi
 
 mkdir -p "$ZSH_AI_SUGGESTIONS_TMPDIR"
 AI_INPUT_FILE="$ZSH_AI_SUGGESTIONS_TMPDIR/zsh-ai-input-$$"
@@ -23,10 +69,10 @@ function log() {
 
 function is_backend_running() {
   if command -v pgrep > /dev/null 2>&1; then
-    pgrep -f "zsh-ai-suggestions" > /dev/null
+    pgrep -f "$ZSH_AI_SUGGESTIONS_BINARY" > /dev/null
     return $?
   else
-    ps aux | grep "[z]sh-ai-suggestions" | grep -v grep > /dev/null
+    ps aux | grep "[$(basename "$ZSH_AI_SUGGESTIONS_BINARY")]" | grep -v grep > /dev/null
     return $?
   fi
 }
@@ -128,3 +174,5 @@ function suggest() {
 
 zle -N suggest
 bindkey "^_" suggest
+
+unset _plugin_script_dir

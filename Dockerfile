@@ -13,16 +13,16 @@ ENV LC_ALL="en_US.UTF-8"
 
 RUN addgroup --system test && adduser --system --ingroup test --shell /bin/zsh --home "$HOME_DIR" test
 
-ENV PATH="$HOME_DIR/.local/bin:$PATH" \
+ENV PATH="$HOME_DIR:$PATH" \
     HOME="$HOME_DIR"
 
-COPY bin/zsh-ai-suggestions "$HOME_DIR/.local/bin/zsh-ai-suggestions"
+# COPY bin/zsh-ai-suggestions "$HOME_DIR/zsh-ai-suggestions"
 COPY zsh-ai-suggestions.zsh "$HOME_DIR/zsh-ai-suggestions.zsh"
 COPY zsh-ai-suggestions.plugin.zsh "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 
 RUN chown -R test:test "$HOME_DIR" && \
     chmod +x "$HOME_DIR/zsh-ai-suggestions.zsh" && \
-    chmod +x "$HOME_DIR/.local/bin/zsh-ai-suggestions" && \
+    # chmod +x "$HOME_DIR/zsh-ai-suggestions" && \
     chmod +x "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 
 # Dockerfile with zinit
