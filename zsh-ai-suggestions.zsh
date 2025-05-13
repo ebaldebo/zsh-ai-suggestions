@@ -83,7 +83,7 @@ trap cleanup EXIT
 
 function log() {
   if [[ "$ZSH_AI_SUGGESTIONS_DEBUG" == "true" ]]; then
-    echo "$1" > /dev/tty
+    echo "$*" > /dev/tty
   fi
 }
 
