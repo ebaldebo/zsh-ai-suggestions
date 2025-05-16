@@ -7,5 +7,5 @@ run:
 	go run cmd/main.go
 
 docker/fipc: build/fipc
-	@docker compose build
-	@docker compose run --rm --remove-orphans zsh-ai-suggestions-playground
+	@docker compose -f ./docker/docker-compose.yml build
+	@docker compose -f ./docker/docker-compose.yml run --rm --remove-orphans zsh-ai-suggestions-playground
