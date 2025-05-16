@@ -16,7 +16,6 @@ RUN addgroup --system test && adduser --system --ingroup test --shell /bin/zsh -
 ENV PATH="$HOME_DIR:$PATH" \
     HOME="$HOME_DIR"
 
-# COPY bin/zsh-ai-suggestions "$HOME_DIR/zsh-ai-suggestions"
 COPY zsh-ai-suggestions.zsh "$HOME_DIR/zsh-ai-suggestions.zsh"
 COPY zsh-ai-suggestions.plugin.zsh "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 

@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/env"
 )
 
 const (

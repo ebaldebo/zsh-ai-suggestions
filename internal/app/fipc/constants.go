@@ -1,4 +1,4 @@
-package app
+package fipc
 
 const (
 	envAIType            = "ZSH_AI_SUGGESTIONS_TYPE"

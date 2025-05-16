@@ -1,4 +1,4 @@
-package app
+package fipc
 
 import (
 	"bufio"
@@ -15,12 +15,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/gemini"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/ollama"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/ai/openai"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/logger"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/ai"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/ai/gemini"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/ai/ollama"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/ai/openai"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/env"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/logger"
 	"github.com/fsnotify/fsnotify"
 )
 
