@@ -21,10 +21,8 @@ COPY zsh-ai-suggestions.plugin.zsh "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 
 RUN chown -R test:test "$HOME_DIR" && \
     chmod +x "$HOME_DIR/zsh-ai-suggestions.zsh" && \
-    # chmod +x "$HOME_DIR/zsh-ai-suggestions" && \
     chmod +x "$HOME_DIR/zsh-ai-suggestions.plugin.zsh"
 
-# Dockerfile with zinit
 RUN echo 'ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"' > ~/.zshrc && \
 echo '' >> ~/.zshrc && \
 echo '# Download Zinit if it does not exist' >> ~/.zshrc && \
