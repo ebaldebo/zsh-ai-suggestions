@@ -1,7 +1,7 @@
 package main
 
-import "github.com/ebaldebo/zsh-ai-suggestions/app"
+import "github.com/ebaldebo/zsh-ai-suggestions/internal/app/server"
 
 func main() {
-	app.Run()
+	server.Run()
 }

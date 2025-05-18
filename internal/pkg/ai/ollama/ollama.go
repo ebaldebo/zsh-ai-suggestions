@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/env"
-	"github.com/ebaldebo/zsh-ai-suggestions/pkg/prompt"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/env"
+	"github.com/ebaldebo/zsh-ai-suggestions/internal/pkg/prompt"
 )
 
 type OllamaClient struct {
