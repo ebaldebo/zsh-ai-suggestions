@@ -145,14 +145,25 @@ function suggest() {
   _zsh_ai_log "requesting suggestion for: '$input' from $ZSH_AI_SUGGESTIONS_SERVER_URL"
   _zsh_ai_log "sending raw input as body: '$input'. waiting for response..."
 
+  local old_buffer="$BUFFER"
+  local old_cursor="$CURSOR"
+ 
+  BUFFER="${old_buffer} Loading..."
+  CURSOR=${#BUFFER}
+  zle -R
+ 
   suggestion=$(echo -n "$input" | curl --silent --show-error --fail --location \
     --max-time "$ZSH_AI_SUGGESTIONS_TIMEOUT" \
     --request POST \
     --header "Content-Type: text/plain" \
     --header "Accept: text/plain" \
     --data-binary @- \
-    "$ZSH_AI_SUGGESTIONS_SERVER_URL")
+    "$ZSH_AI_SUGGESTIONS_SERVER_URL" 2>/dev/null)
   curl_exit_status=$?
+ 
+  BUFFER="$old_buffer"
+  CURSOR="$old_cursor"
+  zle -R
 
   _zsh_ai_log "curl command finished with exit status: $curl_exit_status"
 
